@@ -1,3 +1,9 @@
+import com.google.common.base.Charsets
+import java.io.File
+import java.io.FileInputStream
+import java.io.InputStreamReader
+import java.util.Properties
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
@@ -6,7 +12,7 @@ plugins {
 
 android {
     namespace = "com.arjun1194.crasher"
-    compileSdk = 33
+    compileSdk = 34
 
     defaultConfig {
         minSdk = 24
@@ -55,19 +61,39 @@ dependencies {
 }
 
 publishing {
+    val props = gradleProperties(project.rootDir, "secrets.properties")
     repositories {
         maven {
-            name = "crasher"
-            url = uri("https://maven.pkg.github.com/OWNER/REPOSITORY")
+            name = "local"
+            url = uri("${project.buildDir}/repo")
+            // something
+        }
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/arjun1194/crasher")
             credentials {
-                //username = project.findProperty("gpr.user") ?: System.getenv("USERNAME")
-                //password = project.findProperty("gpr.key") ?: System.getenv("TOKEN")
+                username = props.getProperty("GITHUB_USERNAME")
+                password = props.getProperty("GITHUB_TOKEN")
             }
         }
     }
     publications {
         register<MavenPublication>("gpr") {
-            from(components["release"])
+            version = "1.0.0"
+            artifact("${project.buildDir}/outputs/aar/library-release.aar")
         }
     }
+}
+
+fun gradleProperties(projectRootDir : File, propertiesFile: String) : Properties {
+    val properties = Properties()
+    val localProperties = File(projectRootDir, propertiesFile)
+
+    if (localProperties.isFile) {
+        InputStreamReader(FileInputStream(localProperties), Charsets.UTF_8)
+            .use { reader ->
+                properties.load(reader)
+            }
+    }
+    return properties
 }
